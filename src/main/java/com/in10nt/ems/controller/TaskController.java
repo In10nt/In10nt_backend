@@ -106,10 +106,25 @@ public class TaskController {
     }
     
     @PutMapping("/{id}")
-    public ResponseEntity<Task> updateTask(@PathVariable Long id, @RequestBody Map<String, Object> taskData) {
+    public ResponseEntity<?> updateTask(@PathVariable Long id, @RequestBody Map<String, Object> taskData, 
+                                       @RequestHeader(value = "X-User-Id", required = false) String userIdHeader) {
         try {
             return taskRepository.findById(id)
                     .map(task -> {
+                        // Check permissions - only admin or task creator can update
+                        if (userIdHeader != null) {
+                            Long currentUserId = Long.valueOf(userIdHeader);
+                            User currentUser = userRepository.findById(currentUserId).orElse(null);
+                            
+                            // If not admin and not the creator, deny access
+                            if (currentUser != null && 
+                                !currentUser.getRole().equals("ADMIN") && 
+                                !currentUser.getRole().equals("CEO") &&
+                                !task.getCreatedBy().getId().equals(currentUserId)) {
+                                return ResponseEntity.status(403).body("You can only update tasks you created");
+                            }
+                        }
+                        
                         System.out.println("Updating task with ID: " + id);
                         System.out.println("Task data received: " + taskData);
                         
@@ -205,9 +220,24 @@ public class TaskController {
     }
     
     @DeleteMapping("/{id}")
-    public ResponseEntity<?> deleteTask(@PathVariable Long id) {
+    public ResponseEntity<?> deleteTask(@PathVariable Long id, 
+                                       @RequestHeader(value = "X-User-Id", required = false) String userIdHeader) {
         return taskRepository.findById(id)
                 .map(task -> {
+                    // Check permissions - only admin or task creator can delete
+                    if (userIdHeader != null) {
+                        Long currentUserId = Long.valueOf(userIdHeader);
+                        User currentUser = userRepository.findById(currentUserId).orElse(null);
+                        
+                        // If not admin and not the creator, deny access
+                        if (currentUser != null && 
+                            !currentUser.getRole().equals("ADMIN") && 
+                            !currentUser.getRole().equals("CEO") &&
+                            !task.getCreatedBy().getId().equals(currentUserId)) {
+                            return ResponseEntity.status(403).body("You can only delete tasks you created");
+                        }
+                    }
+                    
                     taskRepository.delete(task);
                     return ResponseEntity.ok().build();
                 })

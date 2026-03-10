@@ -61,6 +61,10 @@ public class Task {
     @JsonIgnoreProperties({"task"})
     private List<TaskReminder> taskReminders;
     
+    @OneToMany(mappedBy = "task", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
+    @JsonIgnoreProperties({"task"})
+    private List<TaskAttachment> attachments;
+    
     public enum Status {
         PENDING, IN_PROGRESS, COMPLETED, APPROVED
     }
