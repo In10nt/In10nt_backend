@@ -3,3 +3,16 @@ target/
 mvnw
 mvnw.cmd
 *.log
+
+# Local utility scripts
+*.bat
+
+# Documentation files (local)
+TROUBLESHOOTING.md
+GIT_STATUS_SUMMARY.md
+
+# Database setup scripts (local)
+database/
+
+# Frontend repository (separate repo)
+frontend/
