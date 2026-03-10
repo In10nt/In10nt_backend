@@ -1,7 +1,8 @@
-target/
-.mvn/
-mvnw
-mvnw.cmd
+# Backend build files
+backend/target/
+backend/.mvn/
+backend/mvnw
+backend/mvnw.cmd
 *.log
 
 # Local utility scripts
