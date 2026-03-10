@@ -25,6 +25,7 @@ public class User {
     @Column(nullable = false)
     private Role role;
     
+    @Column(columnDefinition = "LONGTEXT")
     private String profilePicture;
     private String phone;
     private String address;

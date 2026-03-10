@@ -35,6 +35,10 @@ public class UserController {
     
     @PutMapping("/{id}")
     public ResponseEntity<User> updateUser(@PathVariable Long id, @RequestBody User userDetails) {
+        System.out.println("Updating user " + id);
+        if (userDetails.getProfilePicture() != null) {
+            System.out.println("Profile picture received, length: " + userDetails.getProfilePicture().length());
+        }
         return userRepository.findById(id)
                 .map(user -> {
                     user.setFullName(userDetails.getFullName());
@@ -44,10 +48,16 @@ public class UserController {
                     user.setDepartment(userDetails.getDepartment());
                     user.setSalary(userDetails.getSalary());
                     user.setRole(userDetails.getRole());
+                    if (userDetails.getProfilePicture() != null) {
+                        user.setProfilePicture(userDetails.getProfilePicture());
+                        System.out.println("Profile picture updated for user " + id);
+                    }
                     if (userDetails.getPassword() != null && !userDetails.getPassword().isEmpty()) {
                         user.setPassword(passwordEncoder.encode(userDetails.getPassword()));
                     }
-                    return ResponseEntity.ok(userRepository.save(user));
+                    User savedUser = userRepository.save(user);
+                    System.out.println("User saved successfully");
+                    return ResponseEntity.ok(savedUser);
                 })
                 .orElse(ResponseEntity.notFound().build());
     }
