@@ -35,6 +35,11 @@ public class TaskController {
         return taskRepository.findByAssignedToId(userId);
     }
     
+    @GetMapping("/created/{userId}")
+    public List<Task> getTasksByCreatedUser(@PathVariable Long userId) {
+        return taskRepository.findByCreatedById(userId);
+    }
+    
     @PostMapping
     public ResponseEntity<Task> createTask(@RequestBody Map<String, Object> taskData) {
         try {
@@ -72,6 +77,17 @@ public class TaskController {
                     Long userId = Long.valueOf(assignedToMap.get("id").toString());
                     User user = userRepository.findById(userId).orElse(null);
                     task.setAssignedTo(user);
+                }
+            }
+            
+            // Handle createdBy
+            Object createdByData = taskData.get("createdBy");
+            if (createdByData instanceof Map) {
+                Map<String, Object> createdByMap = (Map<String, Object>) createdByData;
+                if (createdByMap.get("id") != null) {
+                    Long userId = Long.valueOf(createdByMap.get("id").toString());
+                    User user = userRepository.findById(userId).orElse(null);
+                    task.setCreatedBy(user);
                 }
             }
             

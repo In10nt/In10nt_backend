@@ -103,8 +103,16 @@ public class SubtaskController {
                         .sum();
                 int progress = (int) ((completedCount * 100) / subtasks.size());
                 task.setProgress(progress);
+                
+                // Auto-complete task when all subtasks are done
+                if (progress == 100 && task.getStatus() == Task.Status.IN_PROGRESS) {
+                    task.setStatus(Task.Status.COMPLETED);
+                }
+                
                 task.setUpdatedAt(LocalDateTime.now());
                 taskRepository.save(task);
+                
+                System.out.println("Updated task " + taskId + " progress to " + progress + "%");
             }
         });
     }
