@@ -41,10 +41,9 @@ public class TaskController {
     }
     
     @PostMapping
-    public ResponseEntity<Task> createTask(@RequestBody Map<String, Object> taskData) {
+    public ResponseEntity<Task> createTask(@RequestBody Map<String, Object> taskData,
+                                         @RequestHeader(value = "X-User-Id", required = false) String userIdHeader) {
         try {
-            System.out.println("Creating task with data: " + taskData);
-            
             Task task = new Task();
             task.setTitle((String) taskData.get("title"));
             task.setDescription((String) taskData.get("description"));
@@ -72,6 +71,7 @@ public class TaskController {
             // Handle assignedTo
             Object assignedToData = taskData.get("assignedTo");
             if (assignedToData instanceof Map) {
+                @SuppressWarnings("unchecked")
                 Map<String, Object> assignedToMap = (Map<String, Object>) assignedToData;
                 if (assignedToMap.get("id") != null) {
                     Long userId = Long.valueOf(assignedToMap.get("id").toString());
@@ -80,14 +80,24 @@ public class TaskController {
                 }
             }
             
-            // Handle createdBy
-            Object createdByData = taskData.get("createdBy");
-            if (createdByData instanceof Map) {
-                Map<String, Object> createdByMap = (Map<String, Object>) createdByData;
-                if (createdByMap.get("id") != null) {
-                    Long userId = Long.valueOf(createdByMap.get("id").toString());
-                    User user = userRepository.findById(userId).orElse(null);
-                    task.setCreatedBy(user);
+            // Handle createdBy - automatically set from current user
+            if (userIdHeader != null) {
+                Long currentUserId = Long.valueOf(userIdHeader);
+                User currentUser = userRepository.findById(currentUserId).orElse(null);
+                if (currentUser != null) {
+                    task.setCreatedBy(currentUser);
+                }
+            } else {
+                // Fallback: check if createdBy is provided in request data
+                Object createdByData = taskData.get("createdBy");
+                if (createdByData instanceof Map) {
+                    @SuppressWarnings("unchecked")
+                    Map<String, Object> createdByMap = (Map<String, Object>) createdByData;
+                    if (createdByMap.get("id") != null) {
+                        Long userId = Long.valueOf(createdByMap.get("id").toString());
+                        User user = userRepository.findById(userId).orElse(null);
+                        task.setCreatedBy(user);
+                    }
                 }
             }
             
@@ -96,11 +106,8 @@ public class TaskController {
             task.setProgress(0);
             
             Task savedTask = taskRepository.save(task);
-            System.out.println("Task created successfully with ID: " + savedTask.getId());
             return ResponseEntity.ok(savedTask);
         } catch (Exception e) {
-            System.err.println("Error creating task: " + e.getMessage());
-            e.printStackTrace();
             return ResponseEntity.badRequest().build();
         }
     }
@@ -118,15 +125,13 @@ public class TaskController {
                             
                             // If not admin and not the creator, deny access
                             if (currentUser != null && 
-                                !currentUser.getRole().equals("ADMIN") && 
-                                !currentUser.getRole().equals("CEO") &&
+                                !currentUser.getRole().equals(User.Role.ADMIN) && 
+                                !currentUser.getRole().equals(User.Role.CEO) &&
+                                task.getCreatedBy() != null &&
                                 !task.getCreatedBy().getId().equals(currentUserId)) {
                                 return ResponseEntity.status(403).body("You can only update tasks you created");
                             }
                         }
-                        
-                        System.out.println("Updating task with ID: " + id);
-                        System.out.println("Task data received: " + taskData);
                         
                         if (taskData.get("title") != null) {
                             task.setTitle((String) taskData.get("title"));
@@ -157,6 +162,7 @@ public class TaskController {
                         if (taskData.containsKey("assignedTo")) {
                             Object assignedToData = taskData.get("assignedTo");
                             if (assignedToData instanceof Map) {
+                                @SuppressWarnings("unchecked")
                                 Map<String, Object> assignedToMap = (Map<String, Object>) assignedToData;
                                 if (assignedToMap.get("id") != null) {
                                     Long userId = Long.valueOf(assignedToMap.get("id").toString());
@@ -171,13 +177,10 @@ public class TaskController {
                         task.setUpdatedAt(LocalDateTime.now());
                         
                         Task savedTask = taskRepository.save(task);
-                        System.out.println("Task updated successfully: " + savedTask.getId());
                         return ResponseEntity.ok(savedTask);
                     })
                     .orElse(ResponseEntity.notFound().build());
         } catch (Exception e) {
-            System.err.println("Error updating task: " + e.getMessage());
-            e.printStackTrace();
             return ResponseEntity.badRequest().build();
         }
     }
@@ -192,12 +195,10 @@ public class TaskController {
                         task.setUpdatedAt(LocalDateTime.now());
                         
                         Task savedTask = taskRepository.save(task);
-                        System.out.println("Task started: " + savedTask.getId());
                         return ResponseEntity.ok(savedTask);
                     })
                     .orElse(ResponseEntity.notFound().build());
         } catch (Exception e) {
-            System.err.println("Error starting task: " + e.getMessage());
             return ResponseEntity.badRequest().build();
         }
     }
@@ -214,7 +215,6 @@ public class TaskController {
                     })
                     .orElse(ResponseEntity.notFound().build());
         } catch (Exception e) {
-            System.err.println("Error getting task details: " + e.getMessage());
             return ResponseEntity.badRequest().build();
         }
     }
@@ -231,8 +231,9 @@ public class TaskController {
                         
                         // If not admin and not the creator, deny access
                         if (currentUser != null && 
-                            !currentUser.getRole().equals("ADMIN") && 
-                            !currentUser.getRole().equals("CEO") &&
+                            !currentUser.getRole().equals(User.Role.ADMIN) && 
+                            !currentUser.getRole().equals(User.Role.CEO) &&
+                            task.getCreatedBy() != null &&
                             !task.getCreatedBy().getId().equals(currentUserId)) {
                             return ResponseEntity.status(403).body("You can only delete tasks you created");
                         }

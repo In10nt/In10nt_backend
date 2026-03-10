@@ -6,6 +6,7 @@ import com.in10nt.ems.model.User;
 import com.in10nt.ems.repository.TaskReminderRepository;
 import com.in10nt.ems.repository.TaskRepository;
 import com.in10nt.ems.repository.UserRepository;
+import com.in10nt.ems.service.NotificationService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -20,6 +21,7 @@ public class TaskReminderController {
     private final TaskReminderRepository taskReminderRepository;
     private final TaskRepository taskRepository;
     private final UserRepository userRepository;
+    private final NotificationService notificationService;
     
     @GetMapping("/task/{taskId}")
     public List<TaskReminder> getRemindersByTaskId(@PathVariable Long taskId) {
@@ -60,6 +62,10 @@ public class TaskReminderController {
             reminder.setCreatedAt(LocalDateTime.now());
             
             TaskReminder savedReminder = taskReminderRepository.save(reminder);
+            
+            // Create notification for the reminder recipient
+            notificationService.createTaskReminderNotification(task, sentBy, sentTo, reminder.getReminderText());
+            
             return ResponseEntity.ok(savedReminder);
         } catch (Exception e) {
             System.err.println("Error creating reminder: " + e.getMessage());
