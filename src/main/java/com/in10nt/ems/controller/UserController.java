@@ -15,6 +15,11 @@ public class UserController {
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
     
+    @GetMapping("/test")
+    public ResponseEntity<String> testEndpoint() {
+        return ResponseEntity.ok("UserController is working!");
+    }
+    
     @GetMapping
     public List<User> getAllUsers() {
         return userRepository.findAll();
@@ -35,21 +40,56 @@ public class UserController {
     
     @PutMapping("/{id}")
     public ResponseEntity<User> updateUser(@PathVariable Long id, @RequestBody User userDetails) {
-        return userRepository.findById(id)
-                .map(user -> {
-                    user.setFullName(userDetails.getFullName());
-                    user.setEmail(userDetails.getEmail());
-                    user.setPhone(userDetails.getPhone());
-                    user.setAddress(userDetails.getAddress());
-                    user.setDepartment(userDetails.getDepartment());
-                    user.setSalary(userDetails.getSalary());
-                    user.setRole(userDetails.getRole());
-                    if (userDetails.getPassword() != null && !userDetails.getPassword().isEmpty()) {
-                        user.setPassword(passwordEncoder.encode(userDetails.getPassword()));
-                    }
-                    return ResponseEntity.ok(userRepository.save(user));
-                })
-                .orElse(ResponseEntity.notFound().build());
+        try {
+            System.out.println("Updating user with ID: " + id);
+            System.out.println("Request data: " + userDetails.toString());
+            
+            return userRepository.findById(id)
+                    .map(user -> {
+                        // Update basic fields
+                        if (userDetails.getFullName() != null) {
+                            user.setFullName(userDetails.getFullName());
+                        }
+                        if (userDetails.getEmail() != null) {
+                            user.setEmail(userDetails.getEmail());
+                        }
+                        if (userDetails.getPhone() != null) {
+                            user.setPhone(userDetails.getPhone());
+                        }
+                        if (userDetails.getAddress() != null) {
+                            user.setAddress(userDetails.getAddress());
+                        }
+                        if (userDetails.getDepartment() != null) {
+                            user.setDepartment(userDetails.getDepartment());
+                        }
+                        if (userDetails.getSalary() != null) {
+                            user.setSalary(userDetails.getSalary());
+                        }
+                        if (userDetails.getRole() != null) {
+                            user.setRole(userDetails.getRole());
+                        }
+                        
+                        // Update profile picture if provided
+                        if (userDetails.getProfilePicture() != null) {
+                            System.out.println("Updating profile picture, length: " + userDetails.getProfilePicture().length());
+                            user.setProfilePicture(userDetails.getProfilePicture());
+                        }
+                        
+                        // Update password if provided
+                        if (userDetails.getPassword() != null && !userDetails.getPassword().isEmpty()) {
+                            user.setPassword(passwordEncoder.encode(userDetails.getPassword()));
+                        }
+                        
+                        User savedUser = userRepository.save(user);
+                        System.out.println("User updated successfully: " + savedUser.getId());
+                        return ResponseEntity.ok(savedUser);
+                    })
+                    .orElse(ResponseEntity.notFound().build());
+        } catch (Exception e) {
+            System.err.println("Error updating user: " + e.getMessage());
+            e.printStackTrace();
+            return ResponseEntity.internalServerError().build();
+        }
     }
     
     @DeleteMapping("/{id}")

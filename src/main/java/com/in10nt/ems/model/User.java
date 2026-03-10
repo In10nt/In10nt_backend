@@ -25,6 +25,7 @@ public class User {
     @Column(nullable = false)
     private Role role;
     
+    @Column(columnDefinition = "LONGTEXT")
     private String profilePicture;
     private String phone;
     private String address;
@@ -39,5 +40,18 @@ public class User {
     
     public enum Role {
         ADMIN, CEO, EMPLOYEE
+    }
+    
+    @Override
+    public String toString() {
+        return "User{" +
+                "id=" + id +
+                ", email='" + email + '\'' +
+                ", fullName='" + fullName + '\'' +
+                ", role=" + role +
+                ", phone='" + phone + '\'' +
+                ", department='" + department + '\'' +
+                ", profilePicture=" + (profilePicture != null ? "length=" + profilePicture.length() : "null") +
+                '}';
     }
 }

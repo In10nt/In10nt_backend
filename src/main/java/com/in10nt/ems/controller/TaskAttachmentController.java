@@ -6,6 +6,7 @@ import com.in10nt.ems.model.User;
 import com.in10nt.ems.repository.TaskAttachmentRepository;
 import com.in10nt.ems.repository.TaskRepository;
 import com.in10nt.ems.repository.UserRepository;
+import com.in10nt.ems.service.NotificationService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -20,6 +21,7 @@ public class TaskAttachmentController {
     private final TaskAttachmentRepository taskAttachmentRepository;
     private final TaskRepository taskRepository;
     private final UserRepository userRepository;
+    private final NotificationService notificationService;
     
     @GetMapping("/test")
     public ResponseEntity<String> testEndpoint() {
@@ -112,17 +114,70 @@ public class TaskAttachmentController {
                             return ResponseEntity.badRequest().<TaskAttachment>build();
                         }
                         
-                        attachment.setApprovalStatus(TaskAttachment.ApprovalStatus.valueOf(status));
+                        // Store previous status for logging
+                        TaskAttachment.ApprovalStatus previousStatus = attachment.getApprovalStatus();
+                        TaskAttachment.ApprovalStatus newStatus = TaskAttachment.ApprovalStatus.valueOf(status);
+                        
+                        attachment.setApprovalStatus(newStatus);
                         attachment.setReviewedBy(reviewedBy);
                         attachment.setReviewComment((String) reviewData.get("reviewComment"));
                         attachment.setReviewedAt(LocalDateTime.now());
                         
                         TaskAttachment savedAttachment = taskAttachmentRepository.save(attachment);
+                        
+                        // Create notification for attachment status change
+                        notificationService.createAttachmentStatusNotification(
+                            savedAttachment, reviewedBy, attachment.getUploadedBy(), 
+                            status, (String) reviewData.get("reviewComment"));
+                        
+                        System.out.println("Attachment " + id + " status changed from " + previousStatus + " to " + newStatus + " by user " + reviewedById);
+                        
                         return ResponseEntity.ok(savedAttachment);
                     })
                     .orElse(ResponseEntity.notFound().build());
         } catch (Exception e) {
             System.err.println("Error reviewing attachment: " + e.getMessage());
+            e.printStackTrace();
+            return ResponseEntity.badRequest().build();
+        }
+    }
+    
+    @PutMapping("/{id}/revert")
+    public ResponseEntity<TaskAttachment> revertAttachmentStatus(@PathVariable Long id, @RequestBody Map<String, Object> revertData) {
+        try {
+            return taskAttachmentRepository.findById(id)
+                    .map(attachment -> {
+                        Long reviewedById = Long.valueOf(revertData.get("reviewedById").toString());
+                        String revertComment = (String) revertData.get("revertComment");
+                        
+                        User reviewedBy = userRepository.findById(reviewedById).orElse(null);
+                        if (reviewedBy == null) {
+                            return ResponseEntity.badRequest().<TaskAttachment>build();
+                        }
+                        
+                        // Store previous status for logging
+                        TaskAttachment.ApprovalStatus previousStatus = attachment.getApprovalStatus();
+                        
+                        // Revert to PENDING status
+                        attachment.setApprovalStatus(TaskAttachment.ApprovalStatus.PENDING);
+                        attachment.setReviewedBy(reviewedBy);
+                        attachment.setReviewComment(revertComment);
+                        attachment.setReviewedAt(LocalDateTime.now());
+                        
+                        TaskAttachment savedAttachment = taskAttachmentRepository.save(attachment);
+                        
+                        // Create notification for attachment status revert
+                        notificationService.createAttachmentStatusNotification(
+                            savedAttachment, reviewedBy, attachment.getUploadedBy(), 
+                            "PENDING", revertComment);
+                        
+                        System.out.println("Attachment " + id + " status reverted from " + previousStatus + " to PENDING by user " + reviewedById);
+                        
+                        return ResponseEntity.ok(savedAttachment);
+                    })
+                    .orElse(ResponseEntity.notFound().build());
+        } catch (Exception e) {
+            System.err.println("Error reverting attachment: " + e.getMessage());
             e.printStackTrace();
             return ResponseEntity.badRequest().build();
         }
